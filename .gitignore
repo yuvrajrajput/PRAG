@@ -1,0 +1,30 @@
+# MedQA upstream clone and dataset (download locally; see README)
+MedQA/
+
+# Generated artifacts
+data/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model caches and vector index
+.cache/
+*.faiss
+vector_store/
+
+# Large archives
+*.zip
+
+# Environment and IDE
+.env
+.venv/
+venv/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+__MACOSX/

@@ -1,0 +1,82 @@
+[
+  {
+    "question": "An 8-year-old African-American boy is brought to the emergency room with severe pain in both hands. His mother says that the patient had a fever with a cough a couple of days ago. Family history is positive for an uncle who died from a blood disease. A peripheral blood smear of this patient is shown in the image. Which of the following is the most likely mechanism for this patient’s disease?",
+    "answer": "Missense mutation",
+    "options": {
+      "A": "Nonsense mutation",
+      "B": "Frameshift mutation",
+      "C": "Mismatch repair",
+      "D": "Silent mutation",
+      "E": "Missense mutation"
+    },
+    "meta_info": "step1",
+    "answer_idx": "E",
+    "question_text": "An 8-year-old African-American boy is brought to the emergency room with severe pain in both hands. His mother says that the patient had a fever with a cough a couple of days ago. Family history is positive for an uncle who died from a blood disease. A peripheral blood smear of this patient is shown in the image. Which of the following is the most likely mechanism for this patient’s disease?\n\nA. Nonsense mutation\nB. Frameshift mutation\nC. Mismatch repair\nD. Silent mutation\nE. Missense mutation",
+    "correct_answer_idx": "E",
+    "correct_answer_text": "Missense mutation"
+  },
+  {
+    "question": "An 11-year-old boy is brought to the emergency department by his parents with a 2-day history of fever, malaise, and productive cough. On presentation, he is found to be very weak and is having difficulty breathing. His past medical history is significant for multiple prior infections requiring hospitalization including otitis media, upper respiratory infections, pneumonia, and sinusitis. His family history is also significant for a maternal uncle who died of an infection as a child. Lab findings include decreased levels of IgG, IgM, IgA, and plasma cells with normal levels of CD4 positive cells. The protein that is most likely defective in this patient has which of the following functions?",
+    "answer": "Protein phosphorylation",
+    "options": {
+      "A": "Actin polymerization",
+      "B": "Autoimmune regulation",
+      "C": "Lysosomal trafficking",
+      "D": "Nucleotide salvage",
+      "E": "Protein phosphorylation"
+    },
+    "meta_info": "step1",
+    "answer_idx": "E",
+    "question_text": "An 11-year-old boy is brought to the emergency department by his parents with a 2-day history of fever, malaise, and productive cough. On presentation, he is found to be very weak and is having difficulty breathing. His past medical history is significant for multiple prior infections requiring hospitalization including otitis media, upper respiratory infections, pneumonia, and sinusitis. His family history is also significant for a maternal uncle who died of an infection as a child. Lab findings include decreased levels of IgG, IgM, IgA, and plasma cells with normal levels of CD4 positive cells. The protein that is most likely defective in this patient has which of the following functions?\n\nA. Actin polymerization\nB. Autoimmune regulation\nC. Lysosomal trafficking\nD. Nucleotide salvage\nE. Protein phosphorylation",
+    "correct_answer_idx": "E",
+    "correct_answer_text": "Protein phosphorylation"
+  },
+  {
+    "question": "A 37-year-old woman presents for prenatal counseling at 18 weeks gestation. The patient tells you that her sister recently had a child with Down's syndrome, and the patient would like prenatal screening for Down's in her current pregnancy.\n\nWhich of the following prenatal screening tests and results would raise concern for Down's syndrome?",
+    "answer": "Decreased AFP, increased HCG, decreased unconjugated estriol",
+    "options": {
+      "A": "Increased AFP, normal HCG, normal unconjugated estriol",
+      "B": "Decreased AFP, increased HCG, decreased unconjugated estriol",
+      "C": "Decreased AFP, decreased HCG, decreased unconjugated estriol",
+      "D": "Normal AFP, increased HCG, decreased unconjugated estriol",
+      "E": "Normal AFP, decreased HCG, decreased unconjugated estriol"
+    },
+    "meta_info": "step1",
+    "answer_idx": "B",
+    "question_text": "A 37-year-old woman presents for prenatal counseling at 18 weeks gestation. The patient tells you that her sister recently had a child with Down's syndrome, and the patient would like prenatal screening for Down's in her current pregnancy.\n\nWhich of the following prenatal screening tests and results would raise concern for Down's syndrome?\n\nA. Increased AFP, normal HCG, normal unconjugated estriol\nB. Decreased AFP, increased HCG, decreased unconjugated estriol\nC. Decreased AFP, decreased HCG, decreased unconjugated estriol\nD. Normal AFP, increased HCG, decreased unconjugated estriol\nE. Normal AFP, decreased HCG, decreased unconjugated estriol",
+    "correct_answer_idx": "B",
+    "correct_answer_text": "Decreased AFP, increased HCG, decreased unconjugated estriol"
+  },
+  {
+    "question": "A 59-year-old man comes to the physician for evaluation of a progressively enlarging, 8-mm skin lesion on the right shoulder that developed 1 month ago. The patient has a light-skinned complexion and has had several dysplastic nevi removed in the past. A photograph of the lesion is shown. The lesion is most likely derived from cells that are also the embryological origin of which of the following tumors?",
+    "answer": "Neuroblastoma",
+    "options": {
+      "A": "Neuroblastoma",
+      "B": "Liposarcoma",
+      "C": "Medullary thyroid cancer",
+      "D": "Adrenal adenoma",
+      "E": "Basal cell carcinoma"
+    },
+    "meta_info": "step1",
+    "answer_idx": "A",
+    "question_text": "A 59-year-old man comes to the physician for evaluation of a progressively enlarging, 8-mm skin lesion on the right shoulder that developed 1 month ago. The patient has a light-skinned complexion and has had several dysplastic nevi removed in the past. A photograph of the lesion is shown. The lesion is most likely derived from cells that are also the embryological origin of which of the following tumors?\n\nA. Neuroblastoma\nB. Liposarcoma\nC. Medullary thyroid cancer\nD. Adrenal adenoma\nE. Basal cell carcinoma",
+    "correct_answer_idx": "A",
+    "correct_answer_text": "Neuroblastoma"
+  },
+  {
+    "question": "A 73-year-old man presents to the office, complaining of “weird blisters” on his right hand, which appeared 2 weeks ago. The patient says that he initially had a rash, which progressed to blisters. He denies any trauma or known contact with sick people. He is worried because he hasn’t been able to garden since the rash appeared, and he was planning on entering his roses into an annual competition this month. His vital signs are stable. On physical exam, the patient has multiple bullae accompanied by red, papular lesions on his right hand, which progress to his forearm. The right axillary lymph nodes are swollen and tender. What is the treatment for the most likely diagnosis of this patient?",
+    "answer": "Itraconazole",
+    "options": {
+      "A": "Potassium iodide solution",
+      "B": "Azithromycin",
+      "C": "Doxycycline",
+      "D": "Itraconazole",
+      "E": "Topical corticosteroids"
+    },
+    "meta_info": "step1",
+    "answer_idx": "D",
+    "question_text": "A 73-year-old man presents to the office, complaining of “weird blisters” on his right hand, which appeared 2 weeks ago. The patient says that he initially had a rash, which progressed to blisters. He denies any trauma or known contact with sick people. He is worried because he hasn’t been able to garden since the rash appeared, and he was planning on entering his roses into an annual competition this month. His vital signs are stable. On physical exam, the patient has multiple bullae accompanied by red, papular lesions on his right hand, which progress to his forearm. The right axillary lymph nodes are swollen and tender. What is the treatment for the most likely diagnosis of this patient?\n\nA. Potassium iodide solution\nB. Azithromycin\nC. Doxycycline\nD. Itraconazole\nE. Topical corticosteroids",
+    "correct_answer_idx": "D",
+    "correct_answer_text": "Itraconazole"
+  }
+]
