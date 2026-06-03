@@ -1,8 +1,8 @@
 # MedQA upstream clone and dataset (download locally; see README)
 MedQA/
 
-# Generated artifacts
-data/
+# Generated artifacts (project root only)
+/data/
 __pycache__/
 *.py[cod]
 .pytest_cache/
