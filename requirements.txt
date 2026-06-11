@@ -2,3 +2,5 @@ sentence-transformers>=2.2.0
 faiss-cpu>=1.7.4
 tqdm>=4.66.0
 numpy>=1.24.0
+transformers>=4.36.0
+torch>=2.0.0
