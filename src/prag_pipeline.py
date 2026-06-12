@@ -6,7 +6,7 @@ Flow:
   2. Retrieve textbook chunks
   3. Evaluate Paninian rules on retrieved context
   4. Build prompt from rule-approved chunks only (PRAG) vs all chunks (standard RAG)
-  5. Select MCQ answer via BiomedBERT embeddings or keyword overlap fallback
+  5. Select MCQ answer via FLAN-T5 generation (default) or BiomedBERT embeddings
 """
 
 from __future__ import annotations
@@ -33,7 +33,11 @@ from src.rules.paninian_rule_engine import PaniniRuleEngine
 
 OUTPUT_DIR = Path(r"d:\PRAG\outputs")
 BENCHMARK_PATH = OUTPUT_DIR / "benchmark_results.json"
+FLAN_T5_MODEL = "google/flan-t5-base"
 BIOMED_MODEL = "microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext"
+DEFAULT_ANSWERER_MODEL = "flan-t5"
+ANSWERER_CHOICES = ("flan-t5", "biomedbert")
+MAX_CONTEXT_CHARS = 3000
 
 
 # ---------------------------------------------------------------------------
@@ -145,36 +149,101 @@ def load_retriever() -> TextbookStore | KeywordTextbookRetriever:
 
 
 # ---------------------------------------------------------------------------
-# Answer selection (BiomedBERT or keyword overlap)
+# Answer selection (FLAN-T5 default, or legacy BiomedBERT encoder)
 # ---------------------------------------------------------------------------
 
 
-class MCQAnswerer:
-    """Select A–E using BiomedBERT cosine similarity, or keyword overlap on CPU."""
+def _format_options(options: dict[str, str]) -> str:
+    parts = [f"{letter}. {options[letter]}" for letter in OPTION_ORDER if letter in options]
+    return " ".join(parts)
 
-    def __init__(self, model_name: str = BIOMED_MODEL) -> None:
-        self.model_name = model_name
+
+def _extract_answer_letter(text: str, valid_letters: set[str]) -> str:
+    """Parse model output into a single MCQ letter."""
+    cleaned = text.strip().upper()
+    if cleaned in valid_letters:
+        return cleaned
+
+    match = re.search(r"\b([A-E])\b", cleaned)
+    if match and match.group(1) in valid_letters:
+        return match.group(1)
+
+    for char in cleaned:
+        if char in valid_letters:
+            return char
+
+    return sorted(valid_letters)[0]
+
+
+class MCQAnswerer:
+    """Select A–E via FLAN-T5 seq2seq generation (default) or BiomedBERT embeddings."""
+
+    def __init__(self, model: str = DEFAULT_ANSWERER_MODEL) -> None:
+        if model not in ANSWERER_CHOICES:
+            raise ValueError(f"model must be one of {ANSWERER_CHOICES}, got {model!r}")
+        self.model_key = model
+        self._backend = model
         self._model = None
         self._tokenizer = None
-        self._backend = "keyword"
+        self._hf_model_name = FLAN_T5_MODEL if model == "flan-t5" else BIOMED_MODEL
 
-    def _try_load_biomedbert(self) -> bool:
+    def _ensure_loaded(self) -> None:
         if self._model is not None:
-            return self._backend == "biomedbert"
+            return
         try:
             import torch
-            from transformers import AutoModel, AutoTokenizer
+            from transformers import AutoModel, AutoModelForSeq2SeqLM, AutoTokenizer
 
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            self._model = AutoModel.from_pretrained(self.model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(self._hf_model_name)
+            if self.model_key == "flan-t5":
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(self._hf_model_name)
+            else:
+                self._model = AutoModel.from_pretrained(self._hf_model_name)
             self._model.eval()
-            self._backend = "biomedbert"
-            print(f"[MCQAnswerer] Loaded {self.model_name}")
-            return True
+            print(f"[MCQAnswerer] Loaded {self._hf_model_name} ({self.model_key})")
         except Exception as exc:
-            print(f"[MCQAnswerer] BiomedBERT unavailable ({exc}); using keyword matching.")
-            self._backend = "keyword"
-            return False
+            raise RuntimeError(
+                f"Failed to load answerer model {self._hf_model_name!r}: {exc}"
+            ) from exc
+
+    @staticmethod
+    def build_mcq_prompt(question: str, options: dict[str, str], context: str) -> str:
+        """Build the FLAN-T5 instruction prompt for multiple-choice answering."""
+        truncated_context = context[:MAX_CONTEXT_CHARS] if context else "(No context provided.)"
+        return (
+            f"Context: {truncated_context}\n"
+            f"Question: {question}\n"
+            f"Options: {_format_options(options)}\n"
+            "Answer with only the letter of the correct option."
+        )
+
+    def _select_flan_t5(
+        self,
+        question: str,
+        options: dict[str, str],
+        context: str,
+    ) -> str:
+        import torch
+
+        self._ensure_loaded()
+        valid_letters = {letter for letter in OPTION_ORDER if letter in options}
+        prompt = self.build_mcq_prompt(question, options, context)
+
+        inputs = self._tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+        )
+        with torch.no_grad():
+            output_ids = self._model.generate(
+                **inputs,
+                max_new_tokens=8,
+                num_beams=1,
+                do_sample=False,
+            )
+        generated = self._tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        return _extract_answer_letter(generated, valid_letters)
 
     def _embed_text(self, text: str) -> Any:
         import torch
@@ -189,13 +258,36 @@ class MCQAnswerer:
             outputs = self._model(**tokens)
         return outputs.last_hidden_state[:, 0, :].squeeze(0)
 
-    @staticmethod
-    def _keyword_score(context: str, option_text: str) -> float:
-        ctx_terms = set(re.findall(r"[a-z0-9]+", context.lower()))
-        opt_terms = set(re.findall(r"[a-z0-9]+", option_text.lower()))
-        if not opt_terms:
-            return 0.0
-        return len(ctx_terms & opt_terms) / len(opt_terms)
+    def _select_biomedbert(
+        self,
+        question: str,
+        options: dict[str, str],
+        context: str,
+    ) -> str:
+        import torch
+
+        self._ensure_loaded()
+        valid_letters = {letter for letter in OPTION_ORDER if letter in options}
+
+        if not context.strip():
+            return sorted(valid_letters)[0]
+
+        q_emb = self._embed_text(question)
+        ctx_emb = self._embed_text(context[:MAX_CONTEXT_CHARS])
+        query_emb = torch.nn.functional.normalize(q_emb + ctx_emb, dim=0)
+
+        best_letter = sorted(valid_letters)[0]
+        best_score = float("-inf")
+        for letter in OPTION_ORDER:
+            if letter not in options:
+                continue
+            opt_emb = self._embed_text(options[letter])
+            opt_emb = torch.nn.functional.normalize(opt_emb, dim=0)
+            score = float(torch.dot(query_emb, opt_emb))
+            if score > best_score:
+                best_score = score
+                best_letter = letter
+        return best_letter
 
     def select(
         self,
@@ -204,37 +296,9 @@ class MCQAnswerer:
         context: str,
     ) -> str:
         """Return the selected option letter (A–E)."""
-        if self._try_load_biomedbert() and context.strip():
-            import torch
-
-            q_emb = self._embed_text(question)
-            ctx_emb = self._embed_text(context[:2000])
-            query_emb = torch.nn.functional.normalize(q_emb + ctx_emb, dim=0)
-
-            best_letter = "A"
-            best_score = float("-inf")
-            for letter in OPTION_ORDER:
-                if letter not in options:
-                    continue
-                opt_emb = self._embed_text(options[letter])
-                opt_emb = torch.nn.functional.normalize(opt_emb, dim=0)
-                score = float(torch.dot(query_emb, opt_emb))
-                if score > best_score:
-                    best_score = score
-                    best_letter = letter
-            return best_letter
-
-        best_letter = "A"
-        best_score = float("-inf")
-        combined = f"{question}\n{context}"
-        for letter in OPTION_ORDER:
-            if letter not in options:
-                continue
-            score = self._keyword_score(combined, options[letter])
-            if score > best_score:
-                best_score = score
-                best_letter = letter
-        return best_letter
+        if self.model_key == "flan-t5":
+            return self._select_flan_t5(question, options, context)
+        return self._select_biomedbert(question, options, context)
 
 
 # ---------------------------------------------------------------------------
@@ -250,11 +314,12 @@ class PRAGPipeline:
         retriever: TextbookStore | KeywordTextbookRetriever | None = None,
         rule_engine: PaniniRuleEngine | None = None,
         answerer: MCQAnswerer | None = None,
+        model: str = DEFAULT_ANSWERER_MODEL,
         top_k: int = 5,
     ) -> None:
         self.retriever = retriever or load_retriever()
         self.rule_engine = rule_engine or PaniniRuleEngine()
-        self.answerer = answerer or MCQAnswerer()
+        self.answerer = answerer or MCQAnswerer(model=model)
         self.top_k = top_k
 
     def _retrieve(self, query: str) -> list[dict[str, Any]]:
@@ -379,6 +444,7 @@ def run_comparison(
     split: str = "dev",
     seed: int = 42,
     output_path: Path | str | None = BENCHMARK_PATH,
+    model: str = DEFAULT_ANSWERER_MODEL,
 ) -> dict[str, Any]:
     """
     Benchmark PRAG vs standard RAG on n MedQA questions.
@@ -389,10 +455,10 @@ def run_comparison(
     dataset.load_split(split)  # type: ignore[arg-type]
     samples = dataset.sample(n, seed=seed)
 
-    pipeline = PRAGPipeline()
+    pipeline = PRAGPipeline(model=model)
     results: list[dict[str, Any]] = []
 
-    print(f"\n[PRAG] Running comparison on {n} {split} questions...")
+    print(f"\n[PRAG] Running comparison on {n} {split} questions (model={model})...")
     for idx, record in enumerate(samples):
         qid = make_question_id(record, split, idx)
         result = pipeline.run_question(record, qid)
@@ -429,6 +495,7 @@ def run_comparison(
         "avg_rules_fired": round(rules_fired_avg, 2),
         "avg_chunks_filtered_by_rules": round(chunks_filtered_avg, 2),
         "answerer_backend": pipeline.answerer._backend,
+        "answerer_model": pipeline.answerer._hf_model_name,
         "retriever_type": type(pipeline.retriever).__name__,
     }
 
@@ -471,16 +538,27 @@ def _main() -> None:
     parser.add_argument("--compare", type=int, default=0, help="Run n-question benchmark")
     parser.add_argument("--split", default="dev", choices=["train", "dev", "test"])
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_ANSWERER_MODEL,
+        choices=list(ANSWERER_CHOICES),
+        help="MCQ answerer backend (default: flan-t5)",
+    )
     args = parser.parse_args()
 
     if args.compare > 0:
-        run_comparison(n=args.compare, split=args.split, seed=args.seed)
+        run_comparison(
+            n=args.compare,
+            split=args.split,
+            seed=args.seed,
+            model=args.model,
+        )
         return
 
     dataset = MedQADataset()
     dataset.load_split("dev")
     record = dataset.records[0]
-    pipeline = PRAGPipeline()
+    pipeline = PRAGPipeline(model=args.model)
     result = pipeline.run_question(record, make_question_id(record, "dev", 0))
 
     print("\n[PRAG] Single-question demo")
