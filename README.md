@@ -1,4 +1,4 @@
-# PRAG — Parametric Retrieval-Augmented Generation (MedQA)
+# PRAG — Paninian Retrieval-Augmented Generation 
 
 Research codebase for medical multiple-choice QA with textbook retrieval over the [MedQA](https://github.com/jind11/MedQA) dataset (Jin et al., 2020).
 
