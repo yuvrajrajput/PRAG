@@ -8,6 +8,7 @@ from .paninian_rule_engine import (
     RuleContext,
     RuleResult,
     UtsargaApavadaRule,
+    detect_active_pregnancy,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "RuleContext",
     "RuleResult",
     "UtsargaApavadaRule",
+    "detect_active_pregnancy",
 ]
