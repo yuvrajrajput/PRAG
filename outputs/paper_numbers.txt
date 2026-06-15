@@ -1,0 +1,31 @@
+TABLE 1 — Main ablation results (170 targeted questions)
+Mode A  Model only           :  42/170  (24.7%)
+Mode B  Standard RAG         :  30/170  (17.6%)
+Mode C  Rules only           :  44/170  (25.9%)
+Mode D  Full PRAG            :  32/170  (18.8%)
+
+KEY FINDING 1: RAG degradation on safety questions
+  Model alone vs Standard RAG: +7.1 pp (RAG hurts)
+
+KEY FINDING 2: Rule engine value
+  Standard RAG vs Full PRAG: +1.2 pp
+  ONLY-D cases (causal proof): 2 questions
+
+KEY FINDING 3: Rule engine alone
+  Mode C beats Mode B by: +8.2 pp
+  Suggests: governance > retrieval on safety questions
+
+TABLE 2 — Rule activation statistics
+  Targeted rule firing rate   : 57.65%
+  General rule firing rate    : 37.75%
+  Uplift                      : +52.7%
+  Targeted block rate         : 37.65%
+  General block rate          : 17.79%
+  Uplift                      : +111.6%
+
+TABLE 3 — PRAG wins analysis
+  PRAG-only correct : 5
+  RAG-only correct  : 3
+  Net advantage     : +2
+  Most critical win : dev_678 (eclampsia — RAG gave dangerous answer)
+  ONLY-D proof cases: dev_497, dev_678

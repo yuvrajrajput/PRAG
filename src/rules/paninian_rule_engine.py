@@ -178,11 +178,12 @@ class AnuvrttiBag:
     """
 
     def __init__(self) -> None:
-        self._context: dict[str, Any] = {}
+        self._context: dict[str, Any] = {"active_pregnancy": False}
 
     def set_context(self, patient_dict: dict[str, Any]) -> None:
         """Store patient context for automatic inheritance by all rules."""
         self._context = dict(patient_dict)
+        self._context.setdefault("active_pregnancy", False)
 
     def get_context(self) -> dict[str, Any]:
         """Return the inherited patient context."""
@@ -190,12 +191,13 @@ class AnuvrttiBag:
 
     def clear(self) -> None:
         """Reset inherited context."""
-        self._context = {}
+        self._context = {"active_pregnancy": False}
 
     def merge(self, patient_dict: dict[str, Any]) -> dict[str, Any]:
         """Merge call-time context over inherited anuvrtti defaults."""
         merged = dict(self._context)
         merged.update(patient_dict)
+        merged.setdefault("active_pregnancy", False)
         return merged
 
 
@@ -449,15 +451,84 @@ def _age(patient: dict[str, Any], text: str) -> int | None:
     return None
 
 
+_ACTIVE_PREGNANCY_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b\d+\s+weeks?\s*['']?\s*(?:pregnant|gestation)\b", re.IGNORECASE),
+    re.compile(r"\b(?:first|second|third|1st|2nd|3rd)\s+trimester\b", re.IGNORECASE),
+    re.compile(r"\btrimester\b", re.IGNORECASE),
+    re.compile(r"\bcurrently\s+pregnant\b", re.IGNORECASE),
+    re.compile(r"\bis\s+pregnant\b", re.IGNORECASE),
+    re.compile(
+        r"\bgravida\b[^.]{0,100}\b(?:\d+\s+weeks?\s*['']?\s*(?:gestation|pregnant)|trimester)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:\d+\s+weeks?\s*['']?\s*(?:gestation|pregnant)|trimester)\b[^.]{0,100}\bgravida\b",
+        re.IGNORECASE,
+    ),
+)
+
+_HISTORICAL_PREGNANCY_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\b(?:last|previous|prior|past)\s+pregnancy\b", re.IGNORECASE),
+    re.compile(r"\bhistory\s+of\s+pregnancy\b", re.IGNORECASE),
+    re.compile(
+        r"(?:pregnancy|pregnant|gestation).{0,50}years?\s+ago"
+        r"|years?\s+ago.{0,50}(?:pregnancy|pregnant|gestation)",
+        re.IGNORECASE | re.DOTALL,
+    ),
+)
+
+_GP_NOTATION_RE = re.compile(r"\bG\s*\d+\s*P\s*\d+\b", re.IGNORECASE)
+_GP_SHORTHAND_RE = re.compile(r"\bGP\d+\b", re.IGNORECASE)
+
+
+def detect_active_pregnancy(question_text: str) -> bool:
+    """
+    Detect whether the vignette describes a currently pregnant patient.
+
+    Distinguishes active pregnancy (RULE_P001–P005 may fire) from historical
+    mentions such as "last pregnancy was 3 years ago".
+    """
+    if not question_text or not question_text.strip():
+        return False
+
+    text = question_text.strip()
+
+    for pattern in _ACTIVE_PREGNANCY_PATTERNS:
+        if pattern.search(text):
+            return True
+
+    for sentence in re.split(r"[.!?]+", text):
+        if (
+            re.search(r"\b\d{1,3}[- ]year[- ]old\b", sentence, re.IGNORECASE)
+            and re.search(r"\bwoman\b", sentence, re.IGNORECASE)
+            and re.search(r"\bpregnant\b", sentence, re.IGNORECASE)
+            and not re.search(
+                r"\b(?:last|previous|prior|past)\s+pregnancy\b", sentence, re.IGNORECASE
+            )
+        ):
+            return True
+
+    for pattern in _HISTORICAL_PREGNANCY_PATTERNS:
+        if pattern.search(text):
+            return False
+
+    if _GP_NOTATION_RE.search(text) or _GP_SHORTHAND_RE.search(text):
+        return False
+
+    if re.search(r"\b(?:pregnant|pregnancy|gestation|gravid)\b", text, re.IGNORECASE):
+        return False
+
+    return False
+
+
+def _has_active_pregnancy(patient: dict[str, Any]) -> bool:
+    """True when anuvrtti patient context marks an active pregnancy."""
+    return patient.get("active_pregnancy") is True
+
+
 def _is_pregnant(patient: dict[str, Any], text: str) -> bool:
-    if patient.get("pregnant") is True:
-        return True
-    if patient.get("pregnancy") is True:
-        return True
-    return _contains_any(
-        text,
-        ["pregnant", "pregnancy", "gestation", "trimester", "gravid"],
-    )
+    """Pregnancy-sensitive rules use active_pregnancy from vignette, not chunk keywords."""
+    return _has_active_pregnancy(patient)
 
 
 def _has_condition(patient: dict[str, Any], text: str, terms: list[str]) -> bool:
@@ -745,7 +816,7 @@ def _build_medical_rules() -> list[UtsargaApavadaRule]:
             scope="antaranga",
             condition=lambda ctx: (
                 _mentions_drug(ctx.combined_text, ACE_TERMS)
-                and _is_pregnant(ctx.patient, ctx.combined_text)
+                and _has_active_pregnancy(ctx.patient)
             ),
             action="block",
             message="ACE inhibitors contraindicated in pregnancy (teratogenic)",
@@ -760,7 +831,7 @@ def _build_medical_rules() -> list[UtsargaApavadaRule]:
             scope="antaranga",
             condition=lambda ctx: (
                 _mentions_drug(ctx.combined_text, STATIN_TERMS)
-                and _is_pregnant(ctx.patient, ctx.combined_text)
+                and _has_active_pregnancy(ctx.patient)
             ),
             action="block",
             message="Statins contraindicated in pregnancy (teratogenic)",
@@ -773,7 +844,7 @@ def _build_medical_rules() -> list[UtsargaApavadaRule]:
             scope="antaranga",
             condition=lambda ctx: (
                 _mentions_drug(ctx.combined_text, ["warfarin"])
-                and _is_pregnant(ctx.patient, ctx.combined_text)
+                and _has_active_pregnancy(ctx.patient)
                 and _contains_any(ctx.combined_text, ["first trimester", "1st trimester", "week 8", "week 10"])
             ),
             action="block",
@@ -786,7 +857,7 @@ def _build_medical_rules() -> list[UtsargaApavadaRule]:
             severity="nitya",
             scope="antaranga",
             condition=lambda ctx: (
-                _is_pregnant(ctx.patient, ctx.combined_text)
+                _has_active_pregnancy(ctx.patient)
                 and _mentions_drug(ctx.combined_text, CATEGORY_DX_TERMS)
             ),
             action="block",
@@ -799,7 +870,7 @@ def _build_medical_rules() -> list[UtsargaApavadaRule]:
             severity="nitya",
             scope="antaranga",
             condition=lambda ctx: (
-                _is_pregnant(ctx.patient, ctx.combined_text)
+                _has_active_pregnancy(ctx.patient)
                 and _contains_any(ctx.combined_text, ["alcohol", "ethanol", "drink"])
             ),
             action="block",
@@ -1011,6 +1082,13 @@ class PaniniRuleEngine:
         6. Antaranga-bahiranga scope resolution
         """
         patient = self._anuvrtti.merge(patient_context or {})
+        if patient_context is not None and "active_pregnancy" in patient_context:
+            patient["active_pregnancy"] = bool(patient_context["active_pregnancy"])
+        else:
+            patient["active_pregnancy"] = detect_active_pregnancy(query)
+        patient["pregnant"] = patient["active_pregnancy"]
+        patient["pregnancy"] = patient["active_pregnancy"]
+
         context = RuleContext(
             query=query,
             retrieved_context=retrieved_context,
@@ -1209,8 +1287,82 @@ class PaniniRuleEngine:
         }
 
 
+def test_active_pregnancy_detection() -> None:
+    """
+    Regression test for spurious pregnancy rule activation.
+
+    dev_822 — historical pregnancy mention only (must NOT activate rules).
+    dev_678 — active 30-week gestation eclampsia case (must activate rules).
+    """
+    cases = {
+        "dev_822_87011fe2cb (false positive — historical pregnancy)": (
+            "A 32-year-old GP2 presents to an outpatient clinic for a routine gynecologic "
+            "examination. The patient appears well, although she mentions that during the "
+            "past 6 months she has noticed small amounts of vaginal bleeding in the middle "
+            "of her menstrual cycles. Her last pregnancy was 3 years ago. Her subsequent "
+            "menstrual cycles have been regular, lasting about 2–3 days. She does not smoke, "
+            "drinks alcohol occasionally, and has never used illicit drugs. An ultrasound "
+            "reveals a fleshy mass with a pedunculated stalk deep in the cervical canal."
+        ),
+        "dev_678_4be418bdc9 (true positive — active eclampsia)": (
+            "A 27-year-old woman is brought to the emergency department by her coworker after "
+            "having a generalized seizure at work. Her coworker reports that she is at "
+            "30 weeks' gestation and has mentioned headache and right upper quadrant pain "
+            "earlier that day. Her temperature is 37°C (98.6°F), pulse is 91/min, and blood "
+            "pressure is 170/102 mm Hg."
+        ),
+    }
+
+    # Context that previously triggered RULE_P005 on dev_822 via combined_text.
+    alcohol_context = (
+        "Alcohol use during pregnancy causes fetal alcohol spectrum disorder. "
+        "Patients who drink alcohol should be counseled to abstain."
+    )
+
+    print("\n" + "=" * 72)
+    print(" Active pregnancy detection — regression test")
+    print("=" * 72)
+
+    for label, question in cases.items():
+        active = detect_active_pregnancy(question)
+        engine = PaniniRuleEngine()
+        result = engine.evaluate(
+            query=question,
+            retrieved_context=alcohol_context,
+        )
+        pregnancy_rules = [
+            entry["rule_id"]
+            for entry in result.trace
+            if entry["rule_id"].startswith("RULE_P00")
+        ]
+
+        print(f"\n{label}")
+        print(f"  detect_active_pregnancy() : {active}")
+        print(f"  Pregnancy rules fired     : {pregnancy_rules or '(none)'}")
+        expected_active = "dev_678" in label
+        status = "PASS" if active == expected_active else "FAIL"
+        rules_ok = (len(pregnancy_rules) > 0) == expected_active
+        rules_status = "PASS" if rules_ok else "FAIL"
+        print(f"  Detector expected         : {expected_active} [{status}]")
+        print(f"  Rules expected            : {'fire' if expected_active else 'silent'} [{rules_status}]")
+
+
 def _main() -> None:
     """Demonstrate engine with a renal-failure + NSAID scenario."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Paninian rule engine demo")
+    parser.add_argument(
+        "--test-pregnancy",
+        action="store_true",
+        help="Run active-pregnancy regression test (dev_822 vs dev_678)",
+    )
+    args = parser.parse_args()
+
+    if args.test_pregnancy:
+        test_active_pregnancy_detection()
+        return
+
     engine = PaniniRuleEngine()
     engine.set_patient_context({
         "age": 58,

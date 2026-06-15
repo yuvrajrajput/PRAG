@@ -29,7 +29,7 @@ from src.knowledge.textbook_store import (
     TextbookStore,
     _chunk_textbook,
 )
-from src.rules.paninian_rule_engine import PaniniRuleEngine
+from src.rules.paninian_rule_engine import PaniniRuleEngine, detect_active_pregnancy
 
 OUTPUT_DIR = Path(r"d:\PRAG\outputs")
 BENCHMARK_PATH = OUTPUT_DIR / "benchmark_results.json"
@@ -58,7 +58,9 @@ def extract_patient_context(question: str) -> dict[str, Any]:
     if age_match:
         context["age"] = int(age_match.group(1))
 
-    if any(term in text for term in ("pregnant", "pregnancy", "gestation", "gravid")):
+    active_pregnancy = detect_active_pregnancy(question)
+    context["active_pregnancy"] = active_pregnancy
+    if active_pregnancy:
         context["pregnant"] = True
         context["pregnancy"] = True
 
@@ -288,6 +290,30 @@ class MCQAnswerer:
                 best_score = score
                 best_letter = letter
         return best_letter
+
+    def select_from_prompt(self, prompt: str, options: dict[str, str]) -> str:
+        """Return MCQ letter from a fully-formed generation prompt (FLAN-T5 only)."""
+        if self.model_key != "flan-t5":
+            raise ValueError("select_from_prompt requires flan-t5 backend")
+        import torch
+
+        self._ensure_loaded()
+        valid_letters = {letter for letter in OPTION_ORDER if letter in options}
+        inputs = self._tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+        )
+        with torch.no_grad():
+            output_ids = self._model.generate(
+                **inputs,
+                max_new_tokens=8,
+                num_beams=1,
+                do_sample=False,
+            )
+        generated = self._tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        return _extract_answer_letter(generated, valid_letters)
 
     def select(
         self,
