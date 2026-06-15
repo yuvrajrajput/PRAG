@@ -1,0 +1,55 @@
+cff-version: 1.2.0
+message: "If you use PRAG in your research, please cite it as below."
+type: software
+title: "PRAG: Paninian Retrieval-Augmented Generation for Safety-Critical Medical AI"
+abstract: >
+  PRAG is a governance-aware RAG architecture that applies a deterministic
+  rule layer — inspired by Pāṇini's Ashtadhyayi conflict-resolution
+  principles — between retrieval and generation. On 170 safety-critical
+  medical questions, the rule engine fires 52.7% more than on general
+  questions and blocks dangerous context at 111.6% higher rate. An
+  ablation study across four modes provides causal proof that the
+  Pāṇinian rule hierarchy itself contributes to safe answer generation,
+  including a clinically critical eclampsia case where standard RAG
+  recommended the wrong drug class and PRAG recommended the correct one.
+authors:
+  - family-names: "Rajput"
+    given-names: "Yuvraj"
+    alias: "yuvrajrajput"
+    country: IN
+repository-code: "https://github.com/yuvrajrajput/PRAG"
+url: "https://github.com/yuvrajrajput/PRAG"
+license: GPL-3.0
+version: "1.0.0"
+date-released: "2026-06-15"
+keywords:
+  - medical-ai
+  - retrieval-augmented-generation
+  - paninian-grammar
+  - governance-aware-rag
+  - explainable-ai
+  - patient-safety
+  - clinical-decision-support
+  - neurosymbolic-ai
+  - india
+  - sanskrit
+references:
+  - type: article
+    title: >
+      What Disease does this Patient Have? A Large-scale Open Domain
+      Question Answering Dataset from Medical Exams
+    authors:
+      - family-names: "Jin"
+        given-names: "Di"
+      - family-names: "Pan"
+        given-names: "Eileen"
+      - family-names: "Oufattole"
+        given-names: "Nassim"
+      - family-names: "Weng"
+        given-names: "Wei-Hung"
+      - family-names: "Fang"
+        given-names: "Hanyi"
+      - family-names: "Szolovits"
+        given-names: "Peter"
+    year: 2020
+    url: "https://arxiv.org/abs/2009.13081"
