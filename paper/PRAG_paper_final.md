@@ -320,7 +320,7 @@ rule hierarchy as a causal contributor.
 ### 5.4 Statistical Significance
 
 McNemar's test on the 8 discordant cases (5 PRAG wins, 3 RAG wins)
-yields χ²=0.125, p=0.727. The result is not statistically significant at
+yields chi^2=0.125, p=0.727. The result is not statistically significant at
 p<0.05. We interpret this as a power limitation: 8 discordant cases from
 170 questions with a weak backbone model is insufficient for significance
 testing. The governance contribution is demonstrated through the ONLY-D
@@ -361,8 +361,8 @@ Rule trace (dev_678):
   Paninian concept: nitya/antaranga - mandatory patient-specific rule
   Action: BLOCK chunk Obstentrics_Williams::3496
   Override chain: [RULE_D001]
-  RAG answer: Calcium gluconate  ✗
-  PRAG answer: Magnesium sulfate ✓
+  RAG answer: Calcium gluconate  [WRONG]
+  PRAG answer: Magnesium sulfate [CORRECT]
 
 Case 2 - Reye syndrome (dev_695): all chunks blocked, still correct.
 
